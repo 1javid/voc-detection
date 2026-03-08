@@ -123,7 +123,7 @@ These scripts were used to build the final YOLO dataset from PASCAL VOC and CVAT
 2. **Annotate in CVAT** — The filtered images were annotated in CVAT. From CVAT, the **labels-only** exports were downloaded as three folders: **`voc_train`**, **`voc_val`**, and **`voc_test`**. Each folder contains only labels (no images): `Train.txt`, `Validation.txt`, and `Test.txt` (split lists) plus the corresponding YOLO `.txt` label files under a `labels/` tree. You can obtain these three folders by cloning the dataset:
 
    ```bash
-   git clone https://huggingface.co/datasets/1javid/cvat_yolo8_labels_only
+   git clone https://huggingface.co/datasets/1javid/cvat_yolov8_labels_only
    ```
 
    After cloning, use the `voc_train`, `voc_val`, and `voc_test` directories from that repo.
