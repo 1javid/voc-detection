@@ -63,7 +63,11 @@ def copy_split(ids, exclude, src_images_dir, src_labels_dir, dst_images_dir, dst
 
 
 def main(voc_train, voc_val, voc_test, dataset_dir, yolo_dir):
-    """Build yolo_data/ from VOC split lists; val and test exclude IDs already in train."""
+    """Build yolo_data/ from VOC split lists.
+
+    Val: only copies images whose filename is not already in train (no duplicates).
+    Test: only copies images whose filename is not already in train or val (no duplicates).
+    """
     paths = build_paths(voc_train, voc_val, voc_test, dataset_dir, yolo_dir)
     images_dir = os.path.join(paths["yolo_dir"], "images")
     labels_dir = os.path.join(paths["yolo_dir"], "labels")
@@ -80,6 +84,7 @@ def main(voc_train, voc_val, voc_test, dataset_dir, yolo_dir):
     val_ids = read_ids(os.path.join(paths["voc_val"], "Validation.txt"))
     test_ids = read_ids(os.path.join(paths["voc_test"], "Test.txt"))
 
+    # Train: no exclusion (all listed IDs copied)
     train_copied = copy_split(
         train_ids,
         set(),
@@ -89,6 +94,7 @@ def main(voc_train, voc_val, voc_test, dataset_dir, yolo_dir):
         train_lbl,
     )
 
+    # Val: exclude any ID already in train (by filename)
     val_copied = copy_split(
         val_ids,
         train_copied,
@@ -98,6 +104,7 @@ def main(voc_train, voc_val, voc_test, dataset_dir, yolo_dir):
         val_lbl,
     )
 
+    # Test: exclude any ID already in train or val (by filename)
     copy_split(
         test_ids,
         train_copied | val_copied,

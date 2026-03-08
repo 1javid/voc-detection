@@ -74,16 +74,27 @@ pip install -r requirements.txt
 
 ### Weights on Hugging Face
 
-Trained weights (best checkpoint) are on **[1javid/voc_yolov8_exp1](https://huggingface.co/1javid/voc_yolov8_exp1)**. The dataset `yolo_data/` is in this repo. For an **easy run** without training, download the `runs` folder from that Hugging Face repo and place it under `notebooks/runs/` as in the project structure below. The notebooks use fixed paths: training reads data from `yolo_data/` (relative to repo root), and evaluation loads the best weights from `notebooks/runs/detect/voc_detection/exp1/weights/best.pt` and writes outputs under `notebooks/runs/detect/voc_detection/exp1_inference/`.
+Trained weights (best checkpoint) are on **[1javid/voc_yolov8_exp1](https://huggingface.co/1javid/voc_yolov8_exp1)**. The dataset `yolo_data/` is in this repo. For an **easy run** without training, clone that Hugging Face repo and move the runs into place. Cloning yields `voc_yolov8_exp1/runs/...`; move the `runs` directory into `notebooks/` and remove the cloned repository:
+
+```bash
+git clone https://huggingface.co/1javid/voc_yolov8_exp1
+mv voc_yolov8_exp1/runs/ notebooks/
+rm -rf voc_yolov8_exp1
+```
+
+The notebooks use fixed paths: training reads data from `yolo_data/` (relative to repo root), and evaluation loads the best weights from `notebooks/runs/detect/voc_detection/exp1/weights/best.pt` and writes outputs under `notebooks/runs/detect/voc_detection/exp1_inference/`.
 
 ### Project structure
 
 ```
 voc-detection/
+├── docs/                            # README images (curves, confusion matrix, GT vs pred comparisons)
+│   ├── *.png                        # BoxP_curve, BoxR_curve, BoxPR_curve, confusion_matrix_normalized
+│   └── comparisons/                 # GT vs prediction comparison images
 ├── notebooks/
 │   ├── 01_training.ipynb         # Train YOLOv8n on yolo_data
 │   ├── 02_evaluation.ipynb       # Evaluate & visualize (test split, metrics, boxes)
-│   └── runs/                     # ← From Hugging Face voc_yolov8_exp1 (weights + inference outputs)
+│   └── runs/                     # ← From Hugging Face voc_yolov8_exp1
 │       └── detect/voc_detection/
 │           ├── exp1/weights/     # best.pt (training checkpoint)
 │           └── exp1_inference/   # metrics, plots, comparisons
@@ -92,24 +103,40 @@ voc-detection/
 │   ├── images/{train,val,test}/  # Images per split
 │   └── labels/{train,val,test}/  # YOLO .txt labels per split
 ├── utils/
-│   ├── 01_filter_images.py       # (Optional) Sample VOC subset; --voc-root, --out-dir
-│   ├── 02_yolo_format.py         # (Optional) Build yolo_data from CVAT exports; paths via CLI
+│   ├── 01_filter_images.py       # Sample VOC subset; --voc-root, --out-dir
+│   ├── 02_yolo_format.py         # Build yolo_data from CVAT exports; paths via CLI
 │   └── 03_compare_gt_pred.py     # Generate GT vs pred comparison images for selected test IDs
 ├── requirements.txt
 └── README.md
 ```
 
-**Note:** `yolo_data/` is in the repo. `runs/` is gitignored; to run evaluation without training, download `runs` from [voc_yolov8_exp1](https://huggingface.co/1javid/voc_yolov8_exp1) and put it under `notebooks/runs/`. The scripts in `utils/` are for rebuilding the dataset from VOC + CVAT (e.g. after re-annotating).
+**Note:** The scripts in `utils/` are for rebuilding the dataset from VOC + CVAT (e.g. after re-annotating).
 
 ### Utils (optional)
 
-If rebuilding the dataset from VOC and CVAT exports, run from the repo root with your environment activated:
+These scripts were used to build the final YOLO dataset from PASCAL VOC and CVAT annotations. Run from the repo root with your environment activated.
+
+**Workflow:**
+
+1. **Filter VOC subset** — `utils/01_filter_images.py` was used to filter out images of the four classes (car, bus, bicycle, motorbike) from the whole VOC dataset into train/val/test splits, writing images and VOC XMLs into a directory (e.g. `new_data/`).
+
+2. **Annotate in CVAT** — The filtered images were annotated in CVAT. From CVAT, the **labels-only** exports were downloaded as three folders: **`voc_train`**, **`voc_val`**, and **`voc_test`**. Each folder contains only labels (no images): `Train.txt`, `Validation.txt`, and `Test.txt` (split lists) plus the corresponding YOLO `.txt` label files under a `labels/` tree. You can obtain these three folders by cloning the dataset:
+
+   ```bash
+   git clone https://huggingface.co/datasets/1javid/cvat_yolo8_labels_only
+   ```
+
+   After cloning, use the `voc_train`, `voc_val`, and `voc_test` directories from that repo.
+
+3. **Build final YOLO dataset** — `utils/02_yolo_format.py` was used to reformat and map the filtered images (from step 1) to their YOLO labels (from step 2), producing the final `yolo_data/` layout used for training and inference.
+
+**Commands:**
 
 ```bash
-# 1. Sample VOC subset into new_data/ (paths configurable via CLI)
+# 1. Filter four classes from VOC into new_data
 python utils/01_filter_images.py --voc-root /path/to/VOCdevkit/VOC2012 --out-dir new_data
 
-# 2. Build yolo_data/ from CVAT exports (voc_train, voc_val, voc_test dirs)
+# 2. Build yolo_data from CVAT label folders + filtered images
 python utils/02_yolo_format.py --voc-train /path/to/voc_train --voc-val /path/to/voc_val --voc-test /path/to/voc_test --dataset-dir new_data --yolo-dir yolo_data
 
 # 3. Regenerate GT vs pred comparison images (see Results section)
@@ -118,15 +145,12 @@ python utils/03_compare_gt_pred.py
 
 All paths have defaults relative to the repo root (`../VOCdevkit/VOC2012`, `new_data`, `yolo_data`, etc.). Run each script with `--help` to see options.
 
-### How to run
-
-Start Jupyter from the **repository root** so notebook paths resolve: training uses `yolo_data/data.yaml`, evaluation uses `runs/detect/voc_detection/exp1/weights/best.pt` (relative to the notebook dir). With the structure above, both notebooks run without editing paths.
-
+### Notebooks
 
 | Step            | What to do                                                                                                                                                                                                              |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **1. Train**    | Run `notebooks/01_training.ipynb` → trains on `yolo_data/data.yaml`, saves weights to e.g. `runs/detect/voc_detection/exp1/weights/best.pt`. Or use the [uploaded weights](https://huggingface.co/1javid/voc_yolov8_exp1) to skip training. |
-| **2. Evaluate** | Run `notebooks/02_evaluation.ipynb` → point it at your best weights (local or from [Hugging Face](https://huggingface.co/1javid/voc_yolov8_exp1)) and `../yolo_data/data.yaml`; run validation and visualization cells. Metrics and plots go to e.g. `runs/detect/voc_detection/exp1_inference/`. |
+| **2. Evaluate** | Run `notebooks/02_evaluation.ipynb` → point it at your best weights and `../yolo_data/data.yaml`; run validation and visualization cells. Metrics and plots go to `runs/detect/voc_detection/exp1_inference/`. |
 
 
 **Workflow:** Train with the first notebook, then evaluate with the second. No extra steps.
@@ -170,17 +194,15 @@ Annotations were done in **CVAT**. Total time for all three splits (train, valid
 - **Epochs:** 100 (with early stopping).
 - **Image size:** 640 px.
 - **Batch size:** 16
-- **Hardware:** Training can be run locally (CPU or single GPU) or on Kaggle (GPU). Typical runs complete in a few tens of minutes to under an hour on a single GPU, depending on hardware.
-
-Detailed justification for choosing YOLOv8n over alternatives (e.g. RT-DETR) and full reproduction code are in the sections below.
+- **Hardware:** Training was run on Apple M4 Pro chip
 
 ---
 
 ## 5. Results
 
-### Evaluation protocol
+### Evaluation
 
-All reported metrics and figures are computed on the **test split** (38 images, 106 instances), which is held out from training and validation. Evaluation uses the Ultralytics default settings: **IoU threshold 0.5** for mAP50 and the standard 0.5:0.95 range for mAP50-95. Results are from a **single training run**. Metrics and plots can be reproduced by running `notebooks/02_evaluation.ipynb` with the best checkpoint (local: `runs/detect/voc_detection/exp1/weights/best.pt`, or [Hugging Face](https://huggingface.co/1javid/voc_yolov8_exp1)).
+All reported metrics and figures are computed on the **test split** (38 images, 106 instances), which is held out from training and validation. Evaluation uses the Ultralytics default settings: **IoU threshold 0.5** for mAP50 and the standard 0.5:0.95 range for mAP50-95. Results are from a **single training run**. Metrics and plots can be reproduced by running `notebooks/02_evaluation.ipynb` with the best checkpoint (local: `runs/detect/voc_detection/exp1/weights/best.pt`).
 
 ### Metrics (test split)
 
@@ -198,37 +220,37 @@ Summary: **Test mAP50 ≈ 0.61**, **Test mAP50-95 ≈ 0.38**.
 
 ### Visualizations
 
-**Precision and recall vs. confidence.** When we compare the [Box P curve](notebooks/runs/detect/voc_detection/exp1_inference/BoxP_curve.png) (precision vs. confidence) with the [Box R curve](notebooks/runs/detect/voc_detection/exp1_inference/BoxR_curve.png) (recall vs. confidence), we see that as the confidence threshold increases, precision increases while recall decreases. This is expected: a higher threshold means we treat more detections as background, which reduces false positives (hence higher precision) but increases false negatives—actual objects that we now reject (hence lower recall). The curves reflect this tradeoff.
+**Precision and recall vs. confidence.** When we compare the [Box P curve](docs/BoxP_curve.png) (precision vs. confidence) with the [Box R curve](docs/BoxR_curve.png) (recall vs. confidence), we see that as the confidence threshold increases, precision increases while recall decreases. This is expected, since a higher threshold means we treat more detections as background, which reduces false positives (hence higher precision) but increases false negatives—actual objects that we now reject (hence lower recall). The curves reflect this tradeoff.
 
-![BoxP_curve](notebooks/runs/detect/voc_detection/exp1_inference/BoxP_curve.png)
+![BoxP_curve](docs/BoxP_curve.png)
 
-![BoxR_curve](notebooks/runs/detect/voc_detection/exp1_inference/BoxR_curve.png)
+![BoxR_curve](docs/BoxR_curve.png)
 
-**Precision–recall curve.** The [Box P–R curve](notebooks/runs/detect/voc_detection/exp1_inference/BoxPR_curve.png) shows precision vs. recall across confidence thresholds. It summarizes the detection-quality tradeoff: moving along the curve corresponds to changing the confidence threshold. The area under this curve is related to average precision; the shape indicates how much recall we can gain before precision drops sharply.
+**Precision–recall curve.** The [Box P–R curve](docs/BoxPR_curve.png) summarizes the detection-quality tradeoff, where the shape indicates how much recall we can gain before precision drops sharply. One such sharp decrease happens when recall is ~0.82.
 
-![BoxPR_curve](notebooks/runs/detect/voc_detection/exp1_inference/BoxPR_curve.png)
+![BoxPR_curve](docs/BoxPR_curve.png)
 
-**Confusion matrix.** The [normalized confusion matrix](notebooks/runs/detect/voc_detection/exp1_inference/confusion_matrix_normalized.png) shows high error rates for **bus** and **motorbike** classes: a large share of their instances are incorrectly treated as background (missed detections). Conversely, when the model does predict an object, it often predicts **car**—including for true background regions. This pattern aligns with the [annotation distribution](#data-statistics): cars dominate the dataset (≈56% of test instances), so the model is biased toward predicting cars. Bus and motorbike have fewer examples (≈18% and 22% of test instances), leading to lower recall and more confusion with background.
+**Confusion matrix.** The [normalized confusion matrix](docs/confusion_matrix_normalized.png) shows high error rates for **bus** and **motorbike** classes: a large share of their instances are incorrectly treated as background (missed detections). Conversely, when the model does predict an object, it often predicts **car**—including for true background regions. This is highly influenced by [annotation distribution](#data-statistics): cars dominate the dataset (≈56% of test instances), so the model is biased toward predicting cars. Bus and motorbike have fewer examples (≈18% and 22% of test instances), leading to lower recall and more confusion with background.
 
-![confusion_matrix_normalized](notebooks/runs/detect/voc_detection/exp1_inference/confusion_matrix_normalized.png)
+![confusion_matrix_normalized](docs/confusion_matrix_normalized.png)
 
-**Test-set predictions.** Comparing ground-truth labels with predictions on the test set, the model performs best on cars, which matches the data imbalance. It struggles in several scenarios: (1) **weather and lighting changes**, e.g. snowy winter scenes; (2) **occluded or distant buses**; and (3) **clustered or partially visible motorbikes**. Below we compare **ground truth (left)** vs **prediction (right)** for selected test images (evaluation batches 0 and 1). To regenerate these comparison images, run from the repo root: `python utils/03_compare_gt_pred.py` (with your environment activated).
+**Test-set predictions.** Comparing ground-truth labels with predictions on the test set, the model performs best on cars, which matches the data imbalance. It struggles in several scenarios: (1) **weather and lighting changes**, e.g. snowy winter scenes; (2) **occluded or distant buses**; and (3) **clustered or partially visible motorbikes**. Below we compare **ground truth (left)** vs **prediction (right)** for selected test images (evaluation batches 0 and 1). To regenerate these comparison images, run from the repo root: `python utils/03_compare_gt_pred.py`.
 
-**Batch 0 (2008_004794, 2008_003924, 2008_003777)**
-
-| Image | Ground truth vs prediction |
-| ----- | -------------------------- |
-| 2008_004794 | ![2008_004794 compare](notebooks/runs/detect/voc_detection/exp1_inference/comparisons/2008_004794_compare.jpg) |
-| 2008_003924 | ![2008_003924 compare](notebooks/runs/detect/voc_detection/exp1_inference/comparisons/2008_003924_compare.jpg) |
-| 2008_003777 | ![2008_003777 compare](notebooks/runs/detect/voc_detection/exp1_inference/comparisons/2008_003777_compare.jpg) |
-
-**Batch 1 (2008_002384, 2008_002191, 2008_000281)**
+**Batch 0**
 
 | Image | Ground truth vs prediction |
 | ----- | -------------------------- |
-| 2008_002384 | ![2008_002384 compare](notebooks/runs/detect/voc_detection/exp1_inference/comparisons/2008_002384_compare.jpg) |
-| 2008_002191 | ![2008_002191 compare](notebooks/runs/detect/voc_detection/exp1_inference/comparisons/2008_002191_compare.jpg) |
-| 2008_000281 | ![2008_000281 compare](notebooks/runs/detect/voc_detection/exp1_inference/comparisons/2008_000281_compare.jpg) |
+| 2008_004794 | ![2008_004794 compare](docs/comparisons/2008_004794_compare.jpg) |
+| 2008_003924 | ![2008_003924 compare](docs/comparisons/2008_003924_compare.jpg) |
+| 2008_003777 | ![2008_003777 compare](docs/comparisons/2008_003777_compare.jpg) |
+
+**Batch 1**
+
+| Image | Ground truth vs prediction |
+| ----- | -------------------------- |
+| 2008_002384 | ![2008_002384 compare](docs/comparisons/2008_002384_compare.jpg) |
+| 2008_002191 | ![2008_002191 compare](docs/comparisons/2008_002191_compare.jpg) |
+| 2008_000281 | ![2008_000281 compare](docs/comparisons/2008_000281_compare.jpg) |
 
 ### Limitations
 
@@ -238,7 +260,7 @@ Summary: **Test mAP50 ≈ 0.61**, **Test mAP50-95 ≈ 0.38**.
 
 ### Conclusions
 
-The detector achieves **test mAP50 ≈ 0.61** and **mAP50-95 ≈ 0.38**, with strong precision and recall for **cars** (the majority class) and noticeably lower recall for **bus** and **motorbike**. The main driver is **class imbalance** and limited training data for minority classes, plus failure modes such as weather, occlusion, and small or clustered instances. For car-heavy use cases the model is usable as-is; for reliable bus and motorbike detection, next steps would be collecting more (and more balanced) data, tuning the confidence threshold for the target operating point, or both.
+The model achieves **test mAP50 ≈ 0.61** and **mAP50-95 ≈ 0.38**, with strong precision and recall for **cars** (the majority class) and noticeably lower recall for **bus** and **motorbike**. The main driver is **class imbalance** and limited training data for minority classes, plus failure modes such as weather, occlusion, and small or clustered instances. For car use cases the model is usable, but for better bus and motorbike detection, next step would be collecting more (and more balanced) data.
 
 ---
 
@@ -292,13 +314,7 @@ If more time were available, the following would be the next steps, with brief j
 
 - **Report metrics over multiple seeds.** Running training 3–5 times with different seeds and reporting mean ± std (e.g. for mAP50 and mAP50-95) would show whether the current numbers are stable or optimistic; it would also make the Results section more rigorous for a report or paper.
 
-- **Tune confidence threshold for deployment.** The default threshold may not match the desired precision–recall tradeoff (e.g. fewer false alarms vs. fewer misses). Sweeping the confidence threshold on a validation set and choosing one (or per-class thresholds) for the target use case would make the model more usable in practice.
-
-- **Targeted augmentation for failure modes.** The model struggles with snow, occlusion, and distant objects. Adding or strengthening augmentations that mimic these (e.g. synthetic snow/fog, cutout, stronger scale/zoom) could improve robustness without extra data, at the cost of longer training and tuning.
-
-- **Cross-domain or out-of-distribution evaluation.** Testing on data from different weather, cities, or cameras would quantify how much performance drops; that would set expectations for deployment and justify whether domain adaptation or more diverse training data is needed.
-
-- **Compare with a larger model or RT-DETR.** Running the same data with YOLOv8s/m or RT-DETR and comparing mAP and speed would show whether the current bottleneck is capacity or data; useful if compute is available and the goal is to push accuracy before investing in more annotations.
+- **Better augmentation for failure modes.** The model struggles with snow, occlusion, and distant objects. Adding or strengthening augmentations that mimic these (e.g. synthetic snow/fog, cutout, stronger scale/zoom) could improve robustness without extra data, at the cost of longer training and tuning.
 
 ---
 
