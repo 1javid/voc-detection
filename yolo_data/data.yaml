@@ -1,0 +1,9 @@
+names:
+  0: car
+  1: bus
+  2: bicycle
+  3: motorbike
+path: /Users/javidalakbarli/Downloads/voc-detection/yolo_data/
+train: images/train/
+val: images/val/
+test: images/test/

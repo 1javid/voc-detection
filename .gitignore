@@ -1,0 +1,5 @@
+new_data/
+.venv/
+*.pt
+runs/
+.DS_Store
